@@ -15,7 +15,7 @@ jobs:
 
       - run: git submodule update --init --recursive
 
-      - run: sudo sh -c "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys B53DC80D13EDEF05"
+      - run: sudo sh -c "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3"
 
       - run: sudo sh -c "apt update && apt install autoconf libtool pkg-config"
 
