@@ -17,7 +17,7 @@ jobs:
 
       - run: sudo sh -c "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3"
 
-      - run: sudo sh -c "apt update && apt install autoconf libtool pkg-config"
+      - run: sudo sh -c "apt update && apt install autoconf libtool pkg-config libpsl-dev"
 
       - run: chmod +x ./build.sh && ./build.sh
 
