@@ -144,7 +144,7 @@ export PKG_CONFIG_PATH=$SSL_DIR/lib/pkgconfig
             --enable-hidden-symbols \
             --without-libidn \
             --without-librtmp \
-	    --without-libpsl \
+            --without-libpsl \
             --without-zlib \
             --disable-dict \
             --disable-file \
