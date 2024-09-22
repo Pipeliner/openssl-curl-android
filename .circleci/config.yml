@@ -1,144 +1,61 @@
-version: 2.1
-
-orbs:
-  android: circleci/android@2.1.2
-
+version: 2
 jobs:
-  setup:
+  build:
     docker:
-      - image: cimg/android:2023.08-ndk
+      - image: circleci/android:api-24-ndk
+
+    working_directory: ~
+
+    environment:
+      MIN_SDK_VERSION: 21
+      HOST_TAG: linux-x86_64
+
     steps:
       - checkout
-      - run:
-          name: Update submodules
-          command: git submodule update --init --recursive
-      - run:
-          name: Install dependencies
-          command: |
-            sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3
-            sudo apt update && sudo apt install -y autoconf libtool pkg-config
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
 
-  build_openssl:
-    docker:
-      - image: cimg/android:2023.08-ndk
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Set up environment variables
-          command: |
-            echo 'export ANDROID_NDK_HOME="/opt/android/sdk/ndk/25.2.9519653"' >> $BASH_ENV
-            echo 'export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"' >> $BASH_ENV
-            echo 'export PATH="$PATH:$ANDROID_NDK_HOME"' >> $BASH_ENV
-            echo 'export MIN_SDK_VERSION="21"' >> $BASH_ENV
-            echo 'export HOST_TAG="linux-x86_64"' >> $BASH_ENV
-            source $BASH_ENV
-      - run:
-          name: Build OpenSSL
-          command: |
-            set -e
-            chmod +x ./build-openssl.sh
-            ./build-openssl.sh
-          no_output_timeout: 30m
-      - run:
-          name: Check OpenSSL build output
-          command: |
-            if [ ! -d "build/openssl" ]; then
-              echo "OpenSSL build failed. Directory build/openssl does not exist."
-              exit 1
-            fi
-      - persist_to_workspace:
-          root: .
-          paths:
-            - build/openssl
+      - run: git submodule update --init --recursive
 
-  build_curl:
-    docker:
-      - image: cimg/android:2023.08-ndk
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Set up environment variables
-          command: |
-            echo 'export ANDROID_NDK_HOME="/opt/android/sdk/ndk/25.2.9519653"' >> $BASH_ENV
-            echo 'export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"' >> $BASH_ENV
-            echo 'export PATH="$PATH:$ANDROID_NDK_HOME"' >> $BASH_ENV
-            echo 'export MIN_SDK_VERSION="21"' >> $BASH_ENV
-            echo 'export HOST_TAG="linux-x86_64"' >> $BASH_ENV
-            source $BASH_ENV
-      - run:
-          name: Build cURL
-          command: |
-            set -e
-            chmod +x ./build-curl.sh
-            ./build-curl.sh
-          no_output_timeout: 30m
-      - run:
-          name: Check cURL build output
-          command: |
-            if [ ! -d "build/curl" ]; then
-              echo "cURL build failed. Directory build/curl does not exist."
-              exit 1
-            fi
-      - persist_to_workspace:
-          root: .
-          paths:
-            - build/curl
+      - run: sudo sh -c "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3"
 
-  package:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Package artifacts
-          command: |
-            tar cvzf curl.tar.gz build
-            echo "$(git -C curl describe --abbrev=0)_$(git -C openssl describe --abbrev=0)" > VERSION
+      - run: sudo sh -c "apt update && apt install autoconf libtool pkg-config"
+
+      - run: chmod +x ./build.sh && ./build.sh
+
+      - run: tar cvzf curl.tar.gz build
+
       - store_artifacts:
           path: curl.tar.gz
+
+      - run: echo "$(git -C curl describe --abbrev=0)"_"$(git -C openssl describe --abbrev=0)" > VERSION
+
       - persist_to_workspace:
           root: .
           paths:
             - curl.tar.gz
             - VERSION
 
+
+
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: .
+          at: ./artifacts
       - run:
           name: "Publish Release on GitHub"
           command: |
-            VERSION=$(cat ./VERSION)
-            mv ./curl.tar.gz ./${VERSION}.tar.gz
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./${VERSION}.tar.gz
+            VERSION=$(cat ./artifacts/VERSION)
+            mv ./artifacts/curl.tar.gz ./artifacts/${VERSION}.tar.gz
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/${VERSION}.tar.gz
 
 workflows:
   version: 2
-  build-and-publish:
+  build-and-publish-release:
     jobs:
-      - setup
-      - build_openssl:
-          requires:
-            - setup
-      - build_curl:
-          requires:
-            - build_openssl
-      - package:
-          requires:
-            - build_curl
+      - build
       - publish-github-release:
           requires:
-            - package
-          filters:
-            branches:
-              only: main
+            - build
+            
+
