@@ -1,61 +1,108 @@
-version: 2
+version: 2.1
+
+orbs:
+  android: circleci/android@2.1.2
+
 jobs:
-  build:
+  setup:
     docker:
-      - image: circleci/android:api-24-ndk
-
-    working_directory: ~
-
-    environment:
-      MIN_SDK_VERSION: 21
-      HOST_TAG: linux-x86_64
-
+      - image: cimg/android:2023.08
     steps:
       - checkout
+      - run:
+          name: Update submodules
+          command: git submodule update --init --recursive
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3
+            sudo apt update && sudo apt install -y autoconf libtool pkg-config
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
 
-      - run: git submodule update --init --recursive
+  build_openssl:
+    docker:
+      - image: cimg/android:2023.08
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build OpenSSL
+          command: |
+            chmod +x ./build-openssl.sh
+            ./build-openssl.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/openssl
 
-      - run: sudo sh -c "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3"
+  build_curl:
+    docker:
+      - image: cimg/android:2023.08
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build cURL
+          command: |
+            chmod +x ./build-curl.sh
+            ./build-curl.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/curl
 
-      - run: sudo sh -c "apt update && apt install autoconf libtool pkg-config"
-
-      - run: chmod +x ./build.sh && ./build.sh
-
-      - run: tar cvzf curl.tar.gz build
-
+  package:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Package artifacts
+          command: |
+            tar cvzf curl.tar.gz build
+            echo "$(git -C curl describe --abbrev=0)_$(git -C openssl describe --abbrev=0)" > VERSION
       - store_artifacts:
           path: curl.tar.gz
-
-      - run: echo "$(git -C curl describe --abbrev=0)"_"$(git -C openssl describe --abbrev=0)" > VERSION
-
       - persist_to_workspace:
           root: .
           paths:
             - curl.tar.gz
             - VERSION
 
-
-
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: ./artifacts
+          at: .
       - run:
           name: "Publish Release on GitHub"
           command: |
-            VERSION=$(cat ./artifacts/VERSION)
-            mv ./artifacts/curl.tar.gz ./artifacts/${VERSION}.tar.gz
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/${VERSION}.tar.gz
+            VERSION=$(cat ./VERSION)
+            mv ./curl.tar.gz ./${VERSION}.tar.gz
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./${VERSION}.tar.gz
 
 workflows:
   version: 2
-  build-and-publish-release:
+  build-and-publish:
     jobs:
-      - build
+      - setup
+      - build_openssl:
+          requires:
+            - setup
+      - build_curl:
+          requires:
+            - build_openssl
+      - package:
+          requires:
+            - build_curl
       - publish-github-release:
           requires:
-            - build
-            
-
+            - package
+          filters:
+            branches:
+              only: main
