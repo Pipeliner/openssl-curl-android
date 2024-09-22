@@ -9,10 +9,6 @@ jobs:
       - image: cimg/android:2023.08
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - android-sdk-ndk-{{ checksum "build.gradle" }}
-            - android-sdk-ndk-
       - run:
           name: Update submodules
           command: git submodule update --init --recursive
@@ -21,10 +17,6 @@ jobs:
           command: |
             sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C0BA5CE6DC6315A3
             sudo apt update && sudo apt install -y autoconf libtool pkg-config
-      - save_cache:
-          paths:
-            - /opt/android/sdk
-          key: android-sdk-ndk-{{ checksum "build.gradle" }}
       - persist_to_workspace:
           root: .
           paths:
@@ -36,10 +28,6 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - android-sdk-ndk-{{ checksum "build.gradle" }}
-            - android-sdk-ndk-
       - run:
           name: Set up environment variables
           command: |
@@ -73,10 +61,6 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - android-sdk-ndk-{{ checksum "build.gradle" }}
-            - android-sdk-ndk-
       - run:
           name: Set up environment variables
           command: |
