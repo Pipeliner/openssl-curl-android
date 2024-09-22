@@ -37,6 +37,7 @@ export PKG_CONFIG_PATH=$SSL_DIR/lib/pkgconfig
             --without-libidn \
             --without-librtmp \
             --without-zlib \
+            --without-libpsl \
             --disable-dict \
             --disable-file \
             --disable-ftp \
@@ -91,6 +92,7 @@ export PKG_CONFIG_PATH=$SSL_DIR/lib/pkgconfig
             --without-libidn \
             --without-librtmp \
             --without-zlib \
+            --without-libpsl \
             --disable-dict \
             --disable-file \
             --disable-ftp \
@@ -146,6 +148,7 @@ export PKG_CONFIG_PATH=$SSL_DIR/lib/pkgconfig
             --without-librtmp \
             --without-libpsl \
             --without-zlib \
+            --without-libpsl \
             --disable-dict \
             --disable-file \
             --disable-ftp \
@@ -200,6 +203,7 @@ export PKG_CONFIG_PATH=$SSL_DIR/lib/pkgconfig
             --without-libidn \
             --without-librtmp \
             --without-zlib \
+            --without-libpsl \
             --disable-dict \
             --disable-file \
             --disable-ftp \
